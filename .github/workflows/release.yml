@@ -1,0 +1,52 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - run: npm ci
+    - run: npm run build
+    - run: npm test
+
+    - run: zip -r rt-environment-node-${GITHUB_REF_NAME}.zip dist/
+
+    - name: Create Release
+      run: |
+        gh release create "${GITHUB_REF_NAME}" \
+          rt-environment-node-${GITHUB_REF_NAME}.zip \
+          --title "Release ${GITHUB_REF_NAME}" \
+          --notes "## Installation
+
+        \`\`\`bash
+        npm install https://github.com/iluminate/rt-environment-node.git#${GITHUB_REF_NAME}
+        \`\`\`
+
+        ## Manual Installation
+        
+        Download the zip file and extract to use manually.
+
+        ## Usage
+
+        \`\`\`javascript
+        const { get } = require('rt-environment-node');
+        const value = await get('4', 'weight_validation_limit_percentage');
+        \`\`\`"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
